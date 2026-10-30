@@ -1,12 +1,21 @@
 import pytest
 from support_tools import build_registry
 
-from adp.approval import ApprovalGate, amount_over, writes_need_approval
+from adp.approval import (
+    ApprovalGate,
+    amount_over,
+    writes_need_approval,
+)
 from adp.core import FakeClock, ToolCall
 
-REFUND = ToolCall("issue_refund", {"order_id": "ORD-100002",
-                                   "amount": 310.0,
-                                   "reason": "Damaged item"})
+REFUND = ToolCall(
+    "issue_refund",
+    {
+        "order_id": "ORD-100002",
+        "amount": 310.0,
+        "reason": "Damaged item",
+    },
+)
 
 
 def gate(**kw):
@@ -16,7 +25,9 @@ def gate(**kw):
 
 def test_reads_execute_without_approval():
     g = gate()
-    r = g.submit(ToolCall("lookup_order", {"order_id": "ORD-100001"}))
+    r = g.submit(
+        ToolCall("lookup_order", {"order_id": "ORD-100001"})
+    )
     assert r.ok and g.pending() == []
 
 
@@ -67,8 +78,13 @@ def test_requests_expire():
 def test_amount_rule_combines_with_other_rules():
     reg = build_registry()
     g = ApprovalGate(reg, [amount_over(100)])
-    small = ToolCall("issue_refund", {"order_id": "ORD-100001",
-                                      "amount": 20.0,
-                                      "reason": "Late delivery"})
+    small = ToolCall(
+        "issue_refund",
+        {
+            "order_id": "ORD-100001",
+            "amount": 20.0,
+            "reason": "Late delivery",
+        },
+    )
     assert g.submit(small).ok
     assert not g.submit(REFUND).ok

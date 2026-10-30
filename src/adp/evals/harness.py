@@ -36,8 +36,11 @@ def grade_contains(out: str, exp: dict) -> tuple[bool, str]:
 
 
 def grade_forbidden(out: str, exp: dict) -> tuple[bool, str]:
-    bad = [s for s in exp.get("forbidden", [])
-           if s.lower() in out.lower()]
+    bad = [
+        s
+        for s in exp.get("forbidden", [])
+        if s.lower() in out.lower()
+    ]
     return not bad, f"forbidden {bad}" if bad else ""
 
 
@@ -55,8 +58,12 @@ def grade_route(out: str, exp: dict) -> tuple[bool, str]:
     return out.startswith(f"route={want}"), f"want {want}"
 
 
-DEFAULT_GRADERS: list[Grader] = [grade_contains, grade_forbidden,
-                                 grade_citation, grade_route]
+DEFAULT_GRADERS: list[Grader] = [
+    grade_contains,
+    grade_forbidden,
+    grade_citation,
+    grade_route,
+]
 
 
 @dataclass
@@ -85,8 +92,11 @@ def load_cases(path: str | Path) -> list[Case]:
     return [Case(**json.loads(x)) for x in lines if x.strip()]
 
 
-def evaluate(system: Callable[[str], str], cases: list[Case],
-             graders: list[Grader] | None = None) -> Report:
+def evaluate(
+    system: Callable[[str], str],
+    cases: list[Case],
+    graders: list[Grader] | None = None,
+) -> Report:
     graders = graders or DEFAULT_GRADERS
     results = []
     for c in cases:
@@ -94,10 +104,22 @@ def evaluate(system: Callable[[str], str], cases: list[Case],
             out = system(c.input)
         except Exception as exc:
             out = f"EXCEPTION {type(exc).__name__}: {exc}"
-        reasons = [why for g in graders
-                   for ok, why in [g(out, c.expect)] if not ok]
-        results.append(CaseResult(c.id, c.category, c.critical,
-                                  not reasons, reasons, out))
+        reasons = [
+            why
+            for g in graders
+            for ok, why in [g(out, c.expect)]
+            if not ok
+        ]
+        results.append(
+            CaseResult(
+                c.id,
+                c.category,
+                c.critical,
+                not reasons,
+                reasons,
+                out,
+            )
+        )
     cats: dict[str, list[bool]] = defaultdict(list)
     for r in results:
         cats[r.category].append(r.passed)
@@ -126,21 +148,33 @@ class GateDecision:
     failures: list[str]
 
 
-def gate(report: Report, policy: GatePolicy,
-         baseline: float | None = None) -> GateDecision:
+def gate(
+    report: Report,
+    policy: GatePolicy,
+    baseline: float | None = None,
+) -> GateDecision:
     f = []
     if report.critical_failures:
-        f.append(f"critical cases failed: "
-                 f"{report.critical_failures}")
+        f.append(
+            f"critical cases failed: {report.critical_failures}"
+        )
     if report.pass_rate < policy.min_pass_rate:
-        f.append(f"pass rate {report.pass_rate:.2%} < "
-                 f"{policy.min_pass_rate:.0%}")
+        f.append(
+            f"pass rate {report.pass_rate:.2%} < "
+            f"{policy.min_pass_rate:.0%}"
+        )
     for cat, rate in report.by_category.items():
         if rate < policy.min_category_rate:
-            f.append(f"category {cat} {rate:.2%} < "
-                     f"{policy.min_category_rate:.0%}")
-    if baseline is not None and \
-            report.pass_rate < baseline - policy.max_regression:
-        f.append(f"regression: {report.pass_rate:.2%} vs "
-                 f"baseline {baseline:.2%}")
+            f.append(
+                f"category {cat} {rate:.2%} < "
+                f"{policy.min_category_rate:.0%}"
+            )
+    if (
+        baseline is not None
+        and report.pass_rate < baseline - policy.max_regression
+    ):
+        f.append(
+            f"regression: {report.pass_rate:.2%} vs "
+            f"baseline {baseline:.2%}"
+        )
     return GateDecision(not f, f)

@@ -55,35 +55,56 @@ class Router:
         self.threshold = threshold
         self.max_attempts = max_attempts
 
-    def classify(self, text: str) -> tuple[
-            Classification | None, int]:
+    def classify(
+        self, text: str
+    ) -> tuple[Classification | None, int]:
         intents = sorted(self.handlers)
-        msgs = [Message("system", PROMPT.format(intents=intents)),
-                Message("user", text)]
+        msgs = [
+            Message("system", PROMPT.format(intents=intents)),
+            Message("user", text),
+        ]
         for attempt in range(1, self.max_attempts + 1):
             raw = self.llm.complete(msgs).text
             try:
                 c = Classification.model_validate(json.loads(raw))
                 return c, attempt
             except (json.JSONDecodeError, ValidationError) as e:
-                msgs += [Message("assistant", raw),
-                         Message("user", f"Invalid: {e}. "
-                                 "Return valid JSON only.")]
+                msgs += [
+                    Message("assistant", raw),
+                    Message(
+                        "user",
+                        f"Invalid: {e}. Return valid JSON only.",
+                    ),
+                ]
         return None, self.max_attempts
 
     def route(self, text: str) -> RouteResult:
         c, attempts = self.classify(text)
         if c is None:
-            return RouteResult("fallback:invalid_output", None,
-                               None, self.fallback(text), attempts)
+            return RouteResult(
+                "fallback:invalid_output",
+                None,
+                None,
+                self.fallback(text),
+                attempts,
+            )
         if c.intent not in self.handlers:
-            return RouteResult("fallback:unknown_intent", c.intent,
-                               c.confidence, self.fallback(text),
-                               attempts)
+            return RouteResult(
+                "fallback:unknown_intent",
+                c.intent,
+                c.confidence,
+                self.fallback(text),
+                attempts,
+            )
         if c.confidence < self.threshold:
-            return RouteResult("fallback:low_confidence", c.intent,
-                               c.confidence, self.fallback(text),
-                               attempts)
+            return RouteResult(
+                "fallback:low_confidence",
+                c.intent,
+                c.confidence,
+                self.fallback(text),
+                attempts,
+            )
         out = self.handlers[c.intent](text)
-        return RouteResult(c.intent, c.intent, c.confidence, out,
-                           attempts)
+        return RouteResult(
+            c.intent, c.intent, c.confidence, out, attempts
+        )

@@ -23,21 +23,34 @@ def flaky_model_call():
     return "draft reply"
 
 
-out = retry(flaky_model_call, RetryPolicy(), clock,
-            random.Random(7))
-print(out, "after", attempts["n"], "attempts; waited",
-      [round(s, 2) for s in clock.sleeps])
+out = retry(
+    flaky_model_call, RetryPolicy(), clock, random.Random(7)
+)
+print(
+    out,
+    "after",
+    attempts["n"],
+    "attempts; waited",
+    [round(s, 2) for s in clock.sleeps],
+)
 
 store = IdempotencyStore()
 refund = {"order_id": "ORD-100002", "amount": 310.0}
-first = store.run("refund-ORD-100002-1", refund,
-                  lambda p: {"refund_id": "rf-1", **p})
-again = store.run("refund-ORD-100002-1", refund,
-                  lambda p: {"refund_id": "rf-2", **p})
+first = store.run(
+    "refund-ORD-100002-1",
+    refund,
+    lambda p: {"refund_id": "rf-1", **p},
+)
+again = store.run(
+    "refund-ORD-100002-1",
+    refund,
+    lambda p: {"refund_id": "rf-2", **p},
+)
 print("retried write returns", again["refund_id"])
 
-breaker = CircuitBreaker(failure_threshold=2, reset_after=30,
-                         clock=clock)
+breaker = CircuitBreaker(
+    failure_threshold=2, reset_after=30, clock=clock
+)
 for _ in range(3):
     try:
         breaker.call(lambda: 1 / 0)

@@ -24,22 +24,28 @@ from adp.rag import PermissionAwareRetriever, User, answer
 from adp.router import Router
 
 AGENT = User("agent", frozenset({"agents"}))
-KEYWORDS = [("refund", "refund"), ("order", "order_status"),
-            ("how", "how_to"), ("reset", "how_to")]
+KEYWORDS = [
+    ("refund", "refund"),
+    ("order", "order_status"),
+    ("how", "how_to"),
+    ("reset", "how_to"),
+]
 
 
 def classifier(messages, tools):
     text = messages[-1].content.lower()
     for word, intent in KEYWORDS:
         if word in text:
-            return json.dumps({"intent": intent,
-                               "confidence": 0.9})
+            return json.dumps(
+                {"intent": intent, "confidence": 0.9}
+            )
     return json.dumps({"intent": "how_to", "confidence": 0.3})
 
 
 def writer(messages, tools):
-    first = re.search(r"\[doc:([\w-]+)\] ([^\n]+)",
-                      messages[-1].content)
+    first = re.search(
+        r"\[doc:([\w-]+)\] ([^\n]+)", messages[-1].content
+    )
     return f"{first.group(2)} [doc:{first.group(1)}]"
 
 
@@ -54,18 +60,23 @@ def build_system():
         m = re.search(r"ORD-\d{6}", text)
         if not m:
             return "Please share your order number (ORD-xxxxxx)."
-        r = tools.call(ToolCall("lookup_order",
-                                {"order_id": m.group(0)}))
+        r = tools.call(
+            ToolCall("lookup_order", {"order_id": m.group(0)})
+        )
         return r.to_message()
 
     handlers = {
         "order_status": order_status,
         "refund": lambda t: "A lead will review this refund.",
-        "how_to": lambda t: answer(rag_llm, retriever,
-                                   AGENT, t)[0],
+        "how_to": lambda t: answer(rag_llm, retriever, AGENT, t)[
+            0
+        ],
     }
-    router = Router(FakeLLM(responder=classifier), handlers,
-                    lambda t: "Routed to a human agent.")
+    router = Router(
+        FakeLLM(responder=classifier),
+        handlers,
+        lambda t: "Routed to a human agent.",
+    )
 
     def system(text: str) -> str:
         g = in_guard.run(text)

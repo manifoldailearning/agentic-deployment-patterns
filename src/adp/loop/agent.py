@@ -71,8 +71,10 @@ class AgentLoop:
 
     def run(self, task: str) -> LoopResult:
         b = self.budget
-        msgs = [Message("system", self.system),
-                Message("user", task)]
+        msgs = [
+            Message("system", self.system),
+            Message("user", task),
+        ]
         start = self.clock.now()
         tokens = 0
         cost = 0.0
@@ -81,8 +83,15 @@ class AgentLoop:
         results: list[ToolResult] = []
 
         def stop(reason: str, steps: int) -> LoopResult:
-            return LoopResult("stopped", reason, None, steps,
-                              tokens, cost, results)
+            return LoopResult(
+                "stopped",
+                reason,
+                None,
+                steps,
+                tokens,
+                cost,
+                results,
+            )
 
         for step in range(1, b.max_steps + 1):
             if self.clock.now() - start > b.max_seconds:
@@ -90,18 +99,30 @@ class AgentLoop:
             resp = self.llm.complete(msgs, self.tools.schemas())
             u = resp.usage
             tokens += u.total
-            cost += self.pricing.cost(u.input_tokens,
-                                      u.output_tokens)
+            cost += self.pricing.cost(
+                u.input_tokens, u.output_tokens
+            )
             if tokens > b.max_tokens:
                 return stop("token_budget", step)
             if cost > b.max_cost_usd:
                 return stop("cost_budget", step)
             if not resp.tool_calls:
-                return LoopResult("completed", "answer",
-                                  resp.text, step, tokens,
-                                  cost, results)
-            msgs.append(Message("assistant", resp.text,
-                                tool_calls=resp.tool_calls))
+                return LoopResult(
+                    "completed",
+                    "answer",
+                    resp.text,
+                    step,
+                    tokens,
+                    cost,
+                    results,
+                )
+            msgs.append(
+                Message(
+                    "assistant",
+                    resp.text,
+                    tool_calls=resp.tool_calls,
+                )
+            )
             for tc in resp.tool_calls:
                 key = _fingerprint(tc)
                 seen[key] = seen.get(key, 0) + 1
@@ -110,8 +131,13 @@ class AgentLoop:
                 res = self.tools.call(tc)
                 results.append(res)
                 errors = 0 if res.ok else errors + 1
-                msgs.append(Message("tool", res.to_message(),
-                                    tool_call_id=tc.id))
+                msgs.append(
+                    Message(
+                        "tool",
+                        res.to_message(),
+                        tool_call_id=tc.id,
+                    )
+                )
                 if errors >= b.max_tool_errors:
                     return stop("tool_errors", step)
         return stop("step_budget", b.max_steps)

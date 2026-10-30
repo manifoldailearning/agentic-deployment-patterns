@@ -20,17 +20,20 @@ from adp.tools.registry import ToolRegistry, ToolResult
 
 SECRET = re.compile(
     r"(?i)(api[_-]?key|token|password|secret)"
-    r"(\"?\s*[:=]\s*\"?)([^\s\",}]+)")
+    r"(\"?\s*[:=]\s*\"?)([^\s\",}]+)"
+)
 
 
 def redact_secrets(text: str) -> str:
-    return SECRET.sub(lambda m: m.group(1) + m.group(2) + "***",
-                      text)
+    return SECRET.sub(
+        lambda m: m.group(1) + m.group(2) + "***", text
+    )
 
 
 class TokenBucket:
-    def __init__(self, rate_per_sec: float, burst: int,
-                 clock: Clock) -> None:
+    def __init__(
+        self, rate_per_sec: float, burst: int, clock: Clock
+    ) -> None:
         self.rate = rate_per_sec
         self.capacity = burst
         self.tokens = float(burst)
@@ -39,9 +42,10 @@ class TokenBucket:
 
     def take(self) -> bool:
         now = self.clock.now()
-        self.tokens = min(self.capacity,
-                          self.tokens + (now - self.last)
-                          * self.rate)
+        self.tokens = min(
+            self.capacity,
+            self.tokens + (now - self.last) * self.rate,
+        )
         self.last = now
         if self.tokens >= 1:
             self.tokens -= 1
@@ -68,9 +72,12 @@ class AuditRecord:
 
 
 class ToolGateway:
-    def __init__(self, tools: ToolRegistry,
-                 policies: dict[str, AgentPolicy],
-                 clock: Clock | None = None) -> None:
+    def __init__(
+        self,
+        tools: ToolRegistry,
+        policies: dict[str, AgentPolicy],
+        clock: Clock | None = None,
+    ) -> None:
         self.tools = tools
         self.policies = policies
         self.clock = clock or SystemClock()
@@ -79,8 +86,11 @@ class ToolGateway:
 
     def schemas_for(self, agent: str) -> list[dict[str, Any]]:
         allowed = self.policies[agent].allowed_tools
-        return [s for s in self.tools.schemas()
-                if s["name"] in allowed]
+        return [
+            s
+            for s in self.tools.schemas()
+            if s["name"] in allowed
+        ]
 
     def call(self, agent: str, tc: ToolCall) -> ToolResult:
         args = json.dumps(tc.args, sort_keys=True)
@@ -89,23 +99,28 @@ class ToolGateway:
 
         def deny(decision: str, msg: str) -> ToolResult:
             self.audit.append(
-                AuditRecord(agent, tc.name, decision, safe))
+                AuditRecord(agent, tc.name, decision, safe)
+            )
             return ToolResult(tc.id, tc.name, False, error=msg)
 
         if pol is None:
             return deny("denied", f"unknown agent '{agent}'")
         if tc.name not in pol.allowed_tools:
-            return deny("denied",
-                        f"'{tc.name}' not allowed for {agent}")
+            return deny(
+                "denied", f"'{tc.name}' not allowed for {agent}"
+            )
         if len(args.encode()) > pol.max_arg_bytes:
             return deny("too_large", "arguments too large")
         bucket = self._buckets.setdefault(
-            agent, TokenBucket(pol.rate_per_sec, pol.burst,
-                               self.clock))
+            agent,
+            TokenBucket(pol.rate_per_sec, pol.burst, self.clock),
+        )
         if not bucket.take():
-            return deny("rate_limited",
-                        "rate limit exceeded; retry later")
+            return deny(
+                "rate_limited", "rate limit exceeded; retry later"
+            )
         res = self.tools.call(tc)
-        self.audit.append(AuditRecord(agent, tc.name, "allowed",
-                                      safe, res.ok))
+        self.audit.append(
+            AuditRecord(agent, tc.name, "allowed", safe, res.ok)
+        )
         return res

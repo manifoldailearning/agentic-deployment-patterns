@@ -43,12 +43,17 @@ class Stats:
 
     @property
     def error_rate(self) -> float:
-        return self.errors / self.requests if self.requests else 0.0
+        return (
+            self.errors / self.requests if self.requests else 0.0
+        )
 
     @property
     def pass_rate(self) -> float:
-        return (self.eval_pass / self.eval_total
-                if self.eval_total else 1.0)
+        return (
+            self.eval_pass / self.eval_total
+            if self.eval_total
+            else 1.0
+        )
 
 
 @dataclass(frozen=True)
@@ -68,8 +73,9 @@ class ReleaseState:
 
 
 class ReleaseManager:
-    def __init__(self, stable: Variant,
-                 policy: RolloutPolicy | None = None) -> None:
+    def __init__(
+        self, stable: Variant, policy: RolloutPolicy | None = None
+    ) -> None:
         self.state = ReleaseState(stable)
         self.policy = policy or RolloutPolicy()
         self.stats: dict[str, Stats] = {stable.id: Stats()}
@@ -96,7 +102,8 @@ class ReleaseManager:
     def rollback(self, reason: str) -> None:
         if self.state.canary is not None:
             self._clear_canary(
-                f"rolled back {self.state.canary.id}: {reason}")
+                f"rolled back {self.state.canary.id}: {reason}"
+            )
 
     # ----- serving -------------------------------------------
     def choose(self, request_id: str) -> Variant:
@@ -105,8 +112,9 @@ class ReleaseManager:
             return s.canary
         return s.stable
 
-    def serve(self, request_id: str,
-              run: Callable[[Variant], str]) -> tuple[str, str]:
+    def serve(
+        self, request_id: str, run: Callable[[Variant], str]
+    ) -> tuple[str, str]:
         v = self.choose(request_id)
         st = self.stats[v.id]
         st.requests += 1
@@ -124,7 +132,8 @@ class ReleaseManager:
                 shadow_out = f"ERROR {type(exc).__name__}"
             if shadow_out != out:
                 self.shadow_diffs.append(
-                    (request_id, out, shadow_out))
+                    (request_id, out, shadow_out)
+                )
         self.check_canary()
         return out, v.id
 
@@ -143,11 +152,15 @@ class ReleaseManager:
         if cs.requests < p.min_requests:
             return None
         if cs.error_rate > ss.error_rate + p.max_error_rate_delta:
-            reason = (f"error rate {cs.error_rate:.1%} vs "
-                      f"{ss.error_rate:.1%}")
+            reason = (
+                f"error rate {cs.error_rate:.1%} vs "
+                f"{ss.error_rate:.1%}"
+            )
         elif cs.pass_rate < ss.pass_rate - p.max_pass_rate_drop:
-            reason = (f"eval pass {cs.pass_rate:.1%} vs "
-                      f"{ss.pass_rate:.1%}")
+            reason = (
+                f"eval pass {cs.pass_rate:.1%} vs "
+                f"{ss.pass_rate:.1%}"
+            )
         else:
             return None
         self.rollback(reason)

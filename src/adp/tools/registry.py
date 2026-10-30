@@ -70,7 +70,9 @@ class ToolRegistry:
 
         def wrap(fn: Callable[[Any], Any]) -> Callable:
             self.register(
-                Tool(name, description, args_model, fn, side_effect)
+                Tool(
+                    name, description, args_model, fn, side_effect
+                )
             )
             return fn
 
@@ -90,21 +92,27 @@ class ToolRegistry:
         if tool is None:
             known = ", ".join(self.names())
             return ToolResult(
-                tc.id, tc.name, False,
+                tc.id,
+                tc.name,
+                False,
                 error=f"unknown tool '{tc.name}'; known: {known}",
             )
         try:
             args = tool.args_model.model_validate(tc.args)
         except ValidationError as exc:
             return ToolResult(
-                tc.id, tc.name, False,
+                tc.id,
+                tc.name,
+                False,
                 error="invalid arguments: " + _summarize(exc),
             )
         try:
             out = tool.fn(args)
         except Exception as exc:  # tool failures become data
             return ToolResult(
-                tc.id, tc.name, False,
+                tc.id,
+                tc.name,
+                False,
                 error=f"tool failed: {type(exc).__name__}: {exc}",
             )
         return ToolResult(tc.id, tc.name, True, output=out)

@@ -1,4 +1,8 @@
-from adp.durable import DurableRunner, SQLiteCheckpointStore, Workflow
+from adp.durable import (
+    DurableRunner,
+    SQLiteCheckpointStore,
+    Workflow,
+)
 
 
 def counting_wf(counts, fail_at=None):
@@ -9,7 +13,9 @@ def counting_wf(counts, fail_at=None):
                 raise RuntimeError("boom")
             s.setdefault("trail", []).append(name)
             return s
+
         return name, step
+
     return Workflow("w", [mk("a"), mk("b"), mk("c")])
 
 
@@ -25,12 +31,16 @@ def test_failure_is_checkpointed_and_resume_skips_done(tmp_path):
     db = str(tmp_path / "cp.db")
     counts, fail = {}, {"b": True}
     wf = counting_wf(counts, fail)
-    cp = DurableRunner(SQLiteCheckpointStore(db)).run(wf, "r1", {})
+    cp = DurableRunner(SQLiteCheckpointStore(db)).run(
+        wf, "r1", {}
+    )
     assert cp.status == "failed" and cp.step_index == 1
     assert cp.error.startswith("b: RuntimeError")
     fail["b"] = False
     # new store object = new process, same database file
-    cp = DurableRunner(SQLiteCheckpointStore(db)).run(wf, "r1", {})
+    cp = DurableRunner(SQLiteCheckpointStore(db)).run(
+        wf, "r1", {}
+    )
     assert cp.status == "completed"
     assert counts == {"a": 1, "b": 2, "c": 1}
     assert cp.state["trail"] == ["a", "b", "c"]

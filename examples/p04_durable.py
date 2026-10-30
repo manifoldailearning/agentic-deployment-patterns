@@ -1,6 +1,10 @@
 """Pattern 04: resume a crashed run without repeating work."""
 
-from adp.durable import DurableRunner, SQLiteCheckpointStore, Workflow
+from adp.durable import (
+    DurableRunner,
+    SQLiteCheckpointStore,
+    Workflow,
+)
 
 emails_sent = []
 crash = {"on": True}
@@ -24,8 +28,10 @@ def close(s):
     return s
 
 
-wf = Workflow("refund-followup",
-              [("draft", draft), ("send", send), ("close", close)])
+wf = Workflow(
+    "refund-followup",
+    [("draft", draft), ("send", send), ("close", close)],
+)
 runner = DurableRunner(SQLiteCheckpointStore())
 
 cp = runner.run(wf, "run-42", {"customer": "Ana"})

@@ -38,11 +38,15 @@ def test_cache_key_includes_tools():
 
 
 def test_router_policy():
-    r = ModelRouter({"small": echo("s"), "large": echo("l")},
-                    length_and_keyword_policy(max_chars=20))
+    r = ModelRouter(
+        {"small": echo("s"), "large": echo("l")},
+        length_and_keyword_policy(max_chars=20),
+    )
     assert r.complete(M).text == "s"
-    assert r.complete([Message("user", "legal question")]
-                      ).text == "l"
+    assert (
+        r.complete([Message("user", "legal question")]).text
+        == "l"
+    )
     assert r.complete([Message("user", "x" * 21)]).text == "l"
     assert r.routed == {"small": 1, "large": 2}
 
@@ -61,8 +65,11 @@ def test_fallback_and_breaker_skip():
     down = Down()
     fb = FallbackLLM(
         [("a", down), ("b", echo("b"))],
-        {"a": CircuitBreaker(2, 30, clock),
-         "b": CircuitBreaker(2, 30, clock)})
+        {
+            "a": CircuitBreaker(2, 30, clock),
+            "b": CircuitBreaker(2, 30, clock),
+        },
+    )
     for _ in range(4):
         assert fb.complete(M).text == "b"
     assert down.calls == 2  # breaker stopped further calls

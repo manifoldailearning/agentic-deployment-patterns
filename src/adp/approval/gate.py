@@ -27,6 +27,7 @@ def writes_need_approval(reg: ToolRegistry) -> Rule:
         if t is not None and t.side_effect == "write":
             return f"{tc.name} changes customer data"
         return None
+
     return rule
 
 
@@ -36,6 +37,7 @@ def amount_over(limit: float, key: str = "amount") -> Rule:
         if isinstance(v, int | float) and v > limit:
             return f"{key} {v} exceeds {limit}"
         return None
+
     return rule
 
 
@@ -74,39 +76,52 @@ class ApprovalGate:
         self.audit: list[AuditEvent] = []
         self._ids = itertools.count(1)
 
-    def submit(self, tc: ToolCall,
-               actor: str = "agent") -> ToolResult:
-        reasons = [r for rule in self.rules
-                   if (r := rule(tc)) is not None]
+    def submit(
+        self, tc: ToolCall, actor: str = "agent"
+    ) -> ToolResult:
+        reasons = [
+            r
+            for rule in self.rules
+            if (r := rule(tc)) is not None
+        ]
         if not reasons:
             res = self.tools.call(tc)
             self._log("auto", "executed", actor, ok=res.ok)
             return res
-        req = ApprovalRequest(f"apr-{next(self._ids)}", tc,
-                              reasons, self.clock.now())
+        req = ApprovalRequest(
+            f"apr-{next(self._ids)}",
+            tc,
+            reasons,
+            self.clock.now(),
+        )
         self.requests[req.id] = req
         self._log(req.id, "requested", actor, reasons=reasons)
         return ToolResult(
-            tc.id, tc.name, False,
+            tc.id,
+            tc.name,
+            False,
             output={"approval_id": req.id},
             error="pending_approval: " + "; ".join(reasons),
         )
 
     def pending(self) -> list[ApprovalRequest]:
         self._expire()
-        return [r for r in self.requests.values()
-                if r.status == "pending"]
+        return [
+            r
+            for r in self.requests.values()
+            if r.status == "pending"
+        ]
 
     def approve(self, req_id: str, approver: str) -> ToolResult:
         req = self._open(req_id, approver)
         req.status, req.decided_by = "approved", approver
         req.result = self.tools.call(req.call)
-        self._log(req_id, "approved", approver,
-                  ok=req.result.ok)
+        self._log(req_id, "approved", approver, ok=req.result.ok)
         return req.result
 
-    def reject(self, req_id: str, approver: str,
-               why: str) -> None:
+    def reject(
+        self, req_id: str, approver: str, why: str
+    ) -> None:
         req = self._open(req_id, approver)
         req.status, req.decided_by = "rejected", approver
         self._log(req_id, "rejected", approver, why=why)
@@ -125,11 +140,14 @@ class ApprovalGate:
     def _expire(self) -> None:
         now = self.clock.now()
         for r in self.requests.values():
-            if r.status == "pending" and \
-                    now - r.created_at > self.ttl:
+            if (
+                r.status == "pending"
+                and now - r.created_at > self.ttl
+            ):
                 r.status = "expired"
                 self._log(r.id, "expired", "system")
 
-    def _log(self, rid: str, event: str, actor: str,
-             **detail: Any) -> None:
+    def _log(
+        self, rid: str, event: str, actor: str, **detail: Any
+    ) -> None:
         self.audit.append(AuditEvent(rid, event, actor, detail))

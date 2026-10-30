@@ -52,29 +52,36 @@ PLAN_PROMPT = (
 
 
 class Supervisor:
-    def __init__(self, llm: LLM, workers: list[Worker],
-                 max_subtasks: int = 4,
-                 budget_units: int = 6) -> None:
+    def __init__(
+        self,
+        llm: LLM,
+        workers: list[Worker],
+        max_subtasks: int = 4,
+        budget_units: int = 6,
+    ) -> None:
         self.llm = llm
         self.workers = {w.name: w for w in workers}
         self.max_subtasks = max_subtasks
         self.budget_units = budget_units
 
-    def plan(self, request: str) -> tuple[Plan | None,
-                                           list[str]]:
+    def plan(self, request: str) -> tuple[Plan | None, list[str]]:
         prompt = PLAN_PROMPT.format(
             n=self.max_subtasks,
-            workers=", ".join(sorted(self.workers)))
-        raw = self.llm.complete([Message("system", prompt),
-                                 Message("user", request)]).text
+            workers=", ".join(sorted(self.workers)),
+        )
+        raw = self.llm.complete(
+            [Message("system", prompt), Message("user", request)]
+        ).text
         try:
             plan = Plan.model_validate(json.loads(raw))
         except (json.JSONDecodeError, ValidationError) as exc:
             return None, [f"unparseable plan: {exc}"[:200]]
         problems = []
         if len(plan.subtasks) > self.max_subtasks:
-            problems.append(f"{len(plan.subtasks)} subtasks > "
-                            f"{self.max_subtasks}")
+            problems.append(
+                f"{len(plan.subtasks)} subtasks > "
+                f"{self.max_subtasks}"
+            )
         for st in plan.subtasks:
             if st.worker not in self.workers:
                 problems.append(f"unknown worker '{st.worker}'")
@@ -83,22 +90,30 @@ class Supervisor:
             problems.append("duplicate subtasks")
         return (None, problems) if problems else (plan, [])
 
-    def run(self, request: str,
-            combine: Callable[[dict[str, str]], str]
-            ) -> SupervisorResult:
+    def run(
+        self,
+        request: str,
+        combine: Callable[[dict[str, str]], str],
+    ) -> SupervisorResult:
         plan, problems = self.plan(request)
         if plan is None:
-            return SupervisorResult("rejected_plan", None,
-                                    problems=problems)
+            return SupervisorResult(
+                "rejected_plan", None, problems=problems
+            )
         outputs: dict[str, str] = {}
         used = 0
         for i, st in enumerate(plan.subtasks, 1):
             w = self.workers[st.worker]
             if used + w.cost_units > self.budget_units:
                 return SupervisorResult(
-                    "budget_exceeded", None, outputs,
-                    [f"stopped before subtask {i}"], used)
+                    "budget_exceeded",
+                    None,
+                    outputs,
+                    [f"stopped before subtask {i}"],
+                    used,
+                )
             used += w.cost_units
             outputs[f"{i}:{w.name}"] = w.run(st.task)
-        return SupervisorResult("completed", combine(outputs),
-                                outputs, [], used)
+        return SupervisorResult(
+            "completed", combine(outputs), outputs, [], used
+        )

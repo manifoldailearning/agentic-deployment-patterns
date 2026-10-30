@@ -38,17 +38,24 @@ class RetryPolicy:
     max_delay: float = 8.0
     jitter: float = 0.1  # +/- fraction of the delay
     retry_on: tuple[type[BaseException], ...] = (
-        TransientError, TimeoutError, ConnectionError)
+        TransientError,
+        TimeoutError,
+        ConnectionError,
+    )
 
     def delay(self, attempt: int, rng: random.Random) -> float:
-        d = min(self.max_delay,
-                self.base_delay * 2 ** (attempt - 1))
+        d = min(
+            self.max_delay, self.base_delay * 2 ** (attempt - 1)
+        )
         return d * (1 + rng.uniform(-self.jitter, self.jitter))
 
 
-def retry(fn: Callable[[], T], policy: RetryPolicy | None = None,
-          clock: Clock | None = None,
-          rng: random.Random | None = None) -> T:
+def retry(
+    fn: Callable[[], T],
+    policy: RetryPolicy | None = None,
+    clock: Clock | None = None,
+    rng: random.Random | None = None,
+) -> T:
     p = policy or RetryPolicy()
     clock = clock or SystemClock()
     rng = rng or random.Random()
@@ -75,14 +82,19 @@ class IdempotencyStore:
         raw = json.dumps(payload, sort_keys=True).encode()
         return hashlib.sha256(raw).hexdigest()
 
-    def run(self, key: str, payload: dict[str, Any],
-            fn: Callable[[dict[str, Any]], T]) -> T:
+    def run(
+        self,
+        key: str,
+        payload: dict[str, Any],
+        fn: Callable[[dict[str, Any]], T],
+    ) -> T:
         fp = self.fingerprint(payload)
         if key in self._done:
             seen_fp, result = self._done[key]
             if seen_fp != fp:
                 raise IdempotencyConflict(
-                    f"key {key} reused with a different payload")
+                    f"key {key} reused with a different payload"
+                )
             return result
         result = fn(payload)
         self._done[key] = (fp, result)
@@ -94,9 +106,12 @@ class CircuitOpen(Exception):
 
 
 class CircuitBreaker:
-    def __init__(self, failure_threshold: int = 5,
-                 reset_after: float = 30.0,
-                 clock: Clock | None = None) -> None:
+    def __init__(
+        self,
+        failure_threshold: int = 5,
+        reset_after: float = 30.0,
+        clock: Clock | None = None,
+    ) -> None:
         self.threshold = failure_threshold
         self.reset_after = reset_after
         self.clock = clock or SystemClock()
@@ -114,13 +129,17 @@ class CircuitBreaker:
     def call(self, fn: Callable[[], T]) -> T:
         state = self.state
         if state == "open":
-            raise CircuitOpen("dependency unavailable; failing fast")
+            raise CircuitOpen(
+                "dependency unavailable; failing fast"
+            )
         try:
             result = fn()
         except Exception:
             self.failures += 1
-            if state == "half_open" or \
-                    self.failures >= self.threshold:
+            if (
+                state == "half_open"
+                or self.failures >= self.threshold
+            ):
                 self.opened_at = self.clock.now()
             raise
         self.failures = 0

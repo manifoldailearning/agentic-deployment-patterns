@@ -12,7 +12,12 @@ import json
 import sys
 from pathlib import Path
 
-from adp.evals.harness import GatePolicy, evaluate, gate, load_cases
+from adp.evals.harness import (
+    GatePolicy,
+    evaluate,
+    gate,
+    load_cases,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -29,13 +34,18 @@ def main(argv: list[str] | None = None) -> int:
     report = evaluate(system, load_cases(a.cases))
     base = None
     if a.baseline and Path(a.baseline).exists():
-        base = json.loads(Path(a.baseline).read_text())["pass_rate"]
-    decision = gate(report, GatePolicy(min_pass_rate=a.min_pass),
-                    base)
+        base = json.loads(Path(a.baseline).read_text())[
+            "pass_rate"
+        ]
+    decision = gate(
+        report, GatePolicy(min_pass_rate=a.min_pass), base
+    )
     if a.report:
         Path(a.report).write_text(report.to_json())
-    print(f"pass rate {report.pass_rate:.2%} "
-          f"by category {report.by_category}")
+    print(
+        f"pass rate {report.pass_rate:.2%} "
+        f"by category {report.by_category}"
+    )
     for r in report.results:
         if not r.passed:
             print(f"  FAIL {r.id}: {r.reasons}")

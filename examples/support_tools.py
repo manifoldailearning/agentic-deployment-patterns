@@ -25,15 +25,20 @@ class RefundRequest(BaseModel):
 def build_registry() -> ToolRegistry:
     reg = ToolRegistry()
 
-    @reg.tool("lookup_order", "Get order status and total",
-              OrderLookup)
+    @reg.tool(
+        "lookup_order", "Get order status and total", OrderLookup
+    )
     def lookup_order(args: OrderLookup) -> dict:
         if args.order_id not in ORDERS:
             raise KeyError(f"no order {args.order_id}")
         return ORDERS[args.order_id]
 
-    @reg.tool("issue_refund", "Refund part of an order",
-              RefundRequest, side_effect="write")
+    @reg.tool(
+        "issue_refund",
+        "Refund part of an order",
+        RefundRequest,
+        side_effect="write",
+    )
     def issue_refund(args: RefundRequest) -> dict:
         return {"refunded": args.amount, "order": args.order_id}
 

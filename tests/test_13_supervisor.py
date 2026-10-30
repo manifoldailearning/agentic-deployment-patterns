@@ -4,8 +4,10 @@ from adp.core import FakeLLM
 from adp.multiagent import Supervisor, Worker
 
 calls = []
-W = [Worker("a", "A", lambda t: calls.append(t) or f"A:{t}", 2),
-     Worker("b", "B", lambda t: f"B:{t}", 1)]
+W = [
+    Worker("a", "A", lambda t: calls.append(t) or f"A:{t}", 2),
+    Worker("b", "B", lambda t: f"B:{t}", 1),
+]
 
 
 def sup(plan, **kw):
@@ -19,15 +21,17 @@ def st(worker, task):
 
 def test_valid_plan_runs_in_order_and_combines():
     r = sup({"subtasks": [st("a", "one"), st("b", "two")]}).run(
-        "q", combine=lambda o: "|".join(o.values()))
+        "q", combine=lambda o: "|".join(o.values())
+    )
     assert r.status == "completed"
     assert r.answer == "A:one|B:two" and r.units_used == 3
 
 
 def test_unknown_worker_rejects_whole_plan_before_running():
     calls.clear()
-    r = sup({"subtasks": [st("a", "ok task"),
-                          st("root", "bad")]}).run("q", str)
+    r = sup(
+        {"subtasks": [st("a", "ok task"), st("root", "bad")]}
+    ).run("q", str)
     assert r.status == "rejected_plan" and calls == []
     assert "unknown worker 'root'" in r.problems
 
@@ -47,8 +51,13 @@ def test_unparseable_plan_is_rejected():
 
 
 def test_shared_budget_stops_the_run():
-    plan = {"subtasks": [st("a", "task 1"), st("a", "task 2"),
-                         st("b", "task 3")]}
+    plan = {
+        "subtasks": [
+            st("a", "task 1"),
+            st("a", "task 2"),
+            st("b", "task 3"),
+        ]
+    }
     r = sup(plan, budget_units=3).run("q", str)
     assert r.status == "budget_exceeded"
     assert list(r.outputs) == ["1:a"] and r.units_used == 2

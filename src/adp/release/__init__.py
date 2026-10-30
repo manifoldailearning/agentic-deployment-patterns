@@ -7,5 +7,11 @@ from adp.release.manager import (
     bucket,
 )
 
-__all__ = ["ReleaseManager", "ReleaseState", "RolloutPolicy",
-           "Stats", "Variant", "bucket"]
+__all__ = [
+    "ReleaseManager",
+    "ReleaseState",
+    "RolloutPolicy",
+    "Stats",
+    "Variant",
+    "bucket",
+]

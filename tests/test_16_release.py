@@ -1,6 +1,11 @@
 import pytest
 
-from adp.release import ReleaseManager, RolloutPolicy, Variant, bucket
+from adp.release import (
+    ReleaseManager,
+    RolloutPolicy,
+    Variant,
+    bucket,
+)
 
 V1, V2 = Variant("p1", "m"), Variant("p2", "m")
 
@@ -14,8 +19,10 @@ def test_bucketing_is_stable_and_proportional():
     assert bucket("r-1") == bucket("r-1")
     rm = ReleaseManager(V1)
     rm.start_canary(V2, 10)
-    share = sum(rm.choose(f"r{i}") == V2
-                for i in range(10_000)) / 10_000
+    share = (
+        sum(rm.choose(f"r{i}") == V2 for i in range(10_000))
+        / 10_000
+    )
     assert 0.08 < share < 0.12
 
 
@@ -32,6 +39,7 @@ def test_auto_rollback_on_error_rate():
         if v == V2:
             raise RuntimeError("bad")
         return "ok"
+
     for i in range(200):
         try:
             rm.serve(f"r{i}", run)
@@ -72,4 +80,5 @@ def test_shadow_runs_but_is_never_served():
         if v == V2:
             raise RuntimeError("x")
         return "ok"
+
     assert rm.serve("r2", shadow_breaks)[0] == "ok"

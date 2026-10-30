@@ -41,8 +41,9 @@ def redact_pii(text: str) -> Verdict:
         if n:
             found.append(label)
     if found:
-        return Verdict("pii", "redact",
-                       "found " + ", ".join(found), out)
+        return Verdict(
+            "pii", "redact", "found " + ", ".join(found), out
+        )
     return Verdict("pii", "allow")
 
 
@@ -56,30 +57,36 @@ INJECTION = re.compile(
 def block_injection(text: str) -> Verdict:
     m = INJECTION.search(text)
     if m:
-        return Verdict("injection", "block",
-                       f"matched '{m.group(0)}'")
+        return Verdict(
+            "injection", "block", f"matched '{m.group(0)}'"
+        )
     return Verdict("injection", "allow")
 
 
 def max_length(limit: int) -> Check:
     def check(text: str) -> Verdict:
         if len(text) > limit:
-            return Verdict("length", "block",
-                           f"{len(text)} > {limit} chars")
+            return Verdict(
+                "length", "block", f"{len(text)} > {limit} chars"
+            )
         return Verdict("length", "allow")
+
     return check
 
 
 def forbid_terms(*terms: str) -> Check:
-    pat = re.compile("|".join(map(re.escape, terms)),
-                     re.IGNORECASE)
+    pat = re.compile(
+        "|".join(map(re.escape, terms)), re.IGNORECASE
+    )
 
     def check(text: str) -> Verdict:
         m = pat.search(text)
         if m:
-            return Verdict("forbidden", "block",
-                           f"contains '{m.group(0)}'")
+            return Verdict(
+                "forbidden", "block", f"contains '{m.group(0)}'"
+            )
         return Verdict("forbidden", "allow")
+
     return check
 
 
@@ -97,8 +104,11 @@ class GuardResult:
 
     @property
     def reasons(self) -> list[str]:
-        return [f"{v.check}: {v.reason}" for v in self.verdicts
-                if v.action != "allow"]
+        return [
+            f"{v.check}: {v.reason}"
+            for v in self.verdicts
+            if v.action != "allow"
+        ]
 
 
 class Guard:
@@ -126,8 +136,9 @@ class GuardedLLMCall:
     output_guard: Guard
     refusal: str = "I can't help with that request."
 
-    def __call__(self, fn: Callable[[str], str],
-                 user_text: str) -> tuple[str, list[str]]:
+    def __call__(
+        self, fn: Callable[[str], str], user_text: str
+    ) -> tuple[str, list[str]]:
         gi = self.input_guard.run(user_text)
         if not gi.allowed:
             return self.refusal, gi.reasons

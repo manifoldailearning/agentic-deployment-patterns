@@ -45,16 +45,19 @@ class Retrieval:
 
 
 class PermissionAwareRetriever:
-    def __init__(self, docs: list[Doc],
-                 max_age_days: int = 365) -> None:
+    def __init__(
+        self, docs: list[Doc], max_age_days: int = 365
+    ) -> None:
         self.docs = docs
         self.max_age = max_age_days
         n = len(docs)
         df: Counter[str] = Counter()
         for d in docs:
             df.update(set(tokens(d.text)))
-        self.idf = {t: math.log((n + 1) / (c + 0.5))
-                    for t, c in df.items()}
+        self.idf = {
+            t: math.log((n + 1) / (c + 0.5))
+            for t, c in df.items()
+        }
 
     def allowed(self, user: User, doc: Doc) -> str | None:
         """Return a reason if the doc must be excluded."""
@@ -66,8 +69,9 @@ class PermissionAwareRetriever:
             return "stale"
         return None
 
-    def search(self, user: User, query: str,
-               k: int = 3) -> Retrieval:
+    def search(
+        self, user: User, query: str, k: int = 3
+    ) -> Retrieval:
         q = tokens(query)
         out: dict[str, str] = {}
         scored: list[tuple[float, Doc]] = []
@@ -82,8 +86,11 @@ class PermissionAwareRetriever:
                 scored.append((s, d))
         scored.sort(key=lambda x: (-x[0], x[1].id))
         top = scored[:k]
-        return Retrieval([d for _, d in top],
-                         [round(s, 3) for s, _ in top], out)
+        return Retrieval(
+            [d for _, d in top],
+            [round(s, 3) for s, _ in top],
+            out,
+        )
 
 
 ANSWER_PROMPT = (
@@ -92,17 +99,24 @@ ANSWER_PROMPT = (
 )
 
 
-def answer(llm: LLM, retriever: PermissionAwareRetriever,
-           user: User, question: str) -> tuple[str, list[str]]:
+def answer(
+    llm: LLM,
+    retriever: PermissionAwareRetriever,
+    user: User,
+    question: str,
+) -> tuple[str, list[str]]:
     r = retriever.search(user, question)
     if not r.docs:
         return "I don't have a source I can share for that.", []
-    context = "\n".join(f"[doc:{d.id}] {d.text}"
-                        for d in r.docs)
-    resp = llm.complete([
-        Message("system", ANSWER_PROMPT),
-        Message("user", f"Sources:\n{context}\n\nQ: {question}"),
-    ])
+    context = "\n".join(f"[doc:{d.id}] {d.text}" for d in r.docs)
+    resp = llm.complete(
+        [
+            Message("system", ANSWER_PROMPT),
+            Message(
+                "user", f"Sources:\n{context}\n\nQ: {question}"
+            ),
+        ]
+    )
     cited = re.findall(r"\[doc:([\w-]+)\]", resp.text)
     allowed_ids = {d.id for d in r.docs}
     if not cited or not set(cited) <= allowed_ids:

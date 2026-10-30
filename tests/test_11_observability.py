@@ -15,7 +15,10 @@ def test_nested_spans_share_trace_and_link_parents():
     assert {s.trace_id for s in t.spans} == {root.trace_id}
     assert child.parent_id == root.span_id
     assert t.tree(root.trace_id) == [
-        "request [ok]", "  retrieve [ok]", "    rank [ok]"]
+        "request [ok]",
+        "  retrieve [ok]",
+        "    rank [ok]",
+    ]
 
 
 def test_separate_requests_get_separate_traces():
@@ -38,8 +41,9 @@ def test_errors_mark_span_and_propagate():
 
 def test_traced_llm_records_tokens_cost_and_latency(tmp_path):
     t, m = Tracer(), Metrics()
-    resp = LLMResponse(text="hi", usage=Usage(1000, 100),
-                       model="m-large")
+    resp = LLMResponse(
+        text="hi", usage=Usage(1000, 100), model="m-large"
+    )
     llm = TracedLLM(FakeLLM([resp, resp]), t, m, "p-v2")
     llm.complete([])
     llm.complete([])

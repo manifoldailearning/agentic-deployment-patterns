@@ -11,11 +11,16 @@ from adp.guardrails import (
 )
 
 guarded = GuardedLLMCall(
-    input_guard=Guard([max_length(2000), block_injection,
-                       redact_pii]),
-    output_guard=Guard([redact_pii,
-                        forbid_terms("internal only"),
-                        require_citation]),
+    input_guard=Guard(
+        [max_length(2000), block_injection, redact_pii]
+    ),
+    output_guard=Guard(
+        [
+            redact_pii,
+            forbid_terms("internal only"),
+            require_citation,
+        ]
+    ),
 )
 
 seen_by_model = []

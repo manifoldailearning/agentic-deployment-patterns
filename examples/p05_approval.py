@@ -9,13 +9,23 @@ reg = build_registry()
 gate = ApprovalGate(reg, [writes_need_approval(reg)])
 
 # Reads run immediately.
-print(gate.submit(ToolCall("lookup_order",
-                           {"order_id": "ORD-100002"})).to_message())
+print(
+    gate.submit(
+        ToolCall("lookup_order", {"order_id": "ORD-100002"})
+    ).to_message()
+)
 
 # Writes are parked until a human decides.
-res = gate.submit(ToolCall("issue_refund", {
-    "order_id": "ORD-100002", "amount": 310.0,
-    "reason": "Damaged on arrival"}))
+res = gate.submit(
+    ToolCall(
+        "issue_refund",
+        {
+            "order_id": "ORD-100002",
+            "amount": 310.0,
+            "reason": "Damaged on arrival",
+        },
+    )
+)
 print(res.to_message())
 
 req_id = gate.pending()[0].id

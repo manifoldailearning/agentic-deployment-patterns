@@ -32,9 +32,13 @@ class Job:
 
 
 class JobQueue:
-    def __init__(self, handler: JobFn, workers: int = 4,
-                 max_queue: int = 100,
-                 job_timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        handler: JobFn,
+        workers: int = 4,
+        max_queue: int = 100,
+        job_timeout: float = 30.0,
+    ) -> None:
         self.handler = handler
         self.n_workers = workers
         self.job_timeout = job_timeout
@@ -57,15 +61,15 @@ class JobQueue:
     async def start(self) -> None:
         for i in range(self.n_workers):
             self._tasks.append(
-                asyncio.create_task(self._worker(i)))
+                asyncio.create_task(self._worker(i))
+            )
 
     async def drain(self) -> None:
         """Wait for queued work, then stop the workers."""
         await self.q.join()
         for t in self._tasks:
             t.cancel()
-        await asyncio.gather(*self._tasks,
-                             return_exceptions=True)
+        await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks.clear()
 
     async def _worker(self, n: int) -> None:
@@ -74,7 +78,8 @@ class JobQueue:
             job.status = "running"
             try:
                 job.result = await asyncio.wait_for(
-                    self.handler(job.payload), self.job_timeout)
+                    self.handler(job.payload), self.job_timeout
+                )
                 job.status = "succeeded"
             except TimeoutError:
                 job.status = "timed_out"

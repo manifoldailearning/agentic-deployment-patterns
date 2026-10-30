@@ -49,8 +49,9 @@ class Settings:
         e = os.environ.get
         s = cls(
             system=e("ADP_SYSTEM", cls.system),
-            prompt_version=e("ADP_PROMPT_VERSION",
-                             cls.prompt_version),
+            prompt_version=e(
+                "ADP_PROMPT_VERSION", cls.prompt_version
+            ),
             model=e("ADP_MODEL", cls.model),
             request_timeout=float(e("ADP_REQUEST_TIMEOUT", 10)),
             workers=int(e("ADP_WORKERS", 4)),
@@ -77,24 +78,28 @@ class AskOut(BaseModel):
     request_id: str
 
 
-def create_app(settings: Settings | None = None,
-               system: System | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, system: System | None = None
+) -> FastAPI:
     cfg = settings or Settings.from_env()
     metrics = Metrics()
     state: dict = {"ready": False}
 
     async def handle(payload: dict) -> str:
-        return await asyncio.to_thread(state["system"],
-                                       payload["text"])
+        return await asyncio.to_thread(
+            state["system"], payload["text"]
+        )
 
-    queue = JobQueue(handle, cfg.workers, cfg.max_queue,
-                     cfg.job_timeout)
+    queue = JobQueue(
+        handle, cfg.workers, cfg.max_queue, cfg.job_timeout
+    )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         state["system"] = system or load_system(cfg.system)
         state["release"] = ReleaseManager(
-            Variant(cfg.prompt_version, cfg.model))
+            Variant(cfg.prompt_version, cfg.model)
+        )
         await queue.start()
         state["ready"] = True
         yield
@@ -108,8 +113,10 @@ def create_app(settings: Settings | None = None,
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
-        rid = request.headers.get("x-request-id") or \
-            uuid.uuid4().hex
+        rid = (
+            request.headers.get("x-request-id")
+            or uuid.uuid4().hex
+        )
         request.state.rid = rid
         t0 = time.perf_counter()
         resp = await call_next(request)
@@ -117,10 +124,16 @@ def create_app(settings: Settings | None = None,
         resp.headers["x-request-id"] = rid
         metrics.inc(f"http.{resp.status_code}")
         metrics.observe("http.latency_ms", ms)
-        log.info(json.dumps({"rid": rid,
-                             "path": request.url.path,
-                             "status": resp.status_code,
-                             "ms": ms}))
+        log.info(
+            json.dumps(
+                {
+                    "rid": rid,
+                    "path": request.url.path,
+                    "status": resp.status_code,
+                    "ms": ms,
+                }
+            )
+        )
         return resp
 
     @app.get("/healthz")
@@ -131,8 +144,7 @@ def create_app(settings: Settings | None = None,
     async def readyz():
         if not state["ready"]:
             raise HTTPException(503, "not ready")
-        return {"status": "ready",
-                "queue_depth": queue.depth()}
+        return {"status": "ready", "queue_depth": queue.depth()}
 
     @app.post("/v1/ask", response_model=AskOut)
     async def ask(body: AskIn, request: Request):
@@ -142,12 +154,12 @@ def create_app(settings: Settings | None = None,
         try:
             answer = await asyncio.wait_for(
                 asyncio.to_thread(state["system"], body.text),
-                cfg.request_timeout)
+                cfg.request_timeout,
+            )
         except TimeoutError:
             metrics.inc("ask.timeouts")
             raise HTTPException(504, "agent timed out") from None
-        return AskOut(answer=answer, variant=v.id,
-                      request_id=rid)
+        return AskOut(answer=answer, variant=v.id, request_id=rid)
 
     @app.post("/v1/jobs", status_code=202)
     async def submit(body: AskIn):
@@ -156,8 +168,10 @@ def create_app(settings: Settings | None = None,
         except QueueFull:
             metrics.inc("jobs.refused")
             return JSONResponse(
-                {"detail": "busy, retry later"}, status_code=429,
-                headers={"Retry-After": "5"})
+                {"detail": "busy, retry later"},
+                status_code=429,
+                headers={"Retry-After": "5"},
+            )
         return {"job_id": job.id, "status": job.status}
 
     @app.get("/v1/jobs/{job_id}")
@@ -165,13 +179,20 @@ def create_app(settings: Settings | None = None,
         job = queue.jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "unknown job")
-        return {"job_id": job.id, "status": job.status,
-                "result": job.result, "error": job.error}
+        return {
+            "job_id": job.id,
+            "status": job.status,
+            "result": job.result,
+            "error": job.error,
+        }
 
     @app.get("/metrics")
     async def get_metrics():
-        return {"counters": dict(metrics.counters),
-                "latency_p95_ms":
-                metrics.percentile("http.latency_ms", 95)}
+        return {
+            "counters": dict(metrics.counters),
+            "latency_p95_ms": metrics.percentile(
+                "http.latency_ms", 95
+            ),
+        }
 
     return app

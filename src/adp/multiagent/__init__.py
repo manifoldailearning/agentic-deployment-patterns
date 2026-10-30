@@ -6,5 +6,10 @@ from adp.multiagent.supervisor import (
     Worker,
 )
 
-__all__ = ["Plan", "Subtask", "Supervisor", "SupervisorResult",
-           "Worker"]
+__all__ = [
+    "Plan",
+    "Subtask",
+    "Supervisor",
+    "SupervisorResult",
+    "Worker",
+]

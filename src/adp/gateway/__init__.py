@@ -6,5 +6,10 @@ from adp.gateway.gateway import (
     redact_secrets,
 )
 
-__all__ = ["AgentPolicy", "AuditRecord", "TokenBucket",
-           "ToolGateway", "redact_secrets"]
+__all__ = [
+    "AgentPolicy",
+    "AuditRecord",
+    "TokenBucket",
+    "ToolGateway",
+    "redact_secrets",
+]

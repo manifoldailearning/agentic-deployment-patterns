@@ -23,6 +23,7 @@ def flaky(fail_times, exc=TransientError):
         if n["calls"] <= fail_times:
             raise exc("x")
         return "ok"
+
     return fn, n
 
 
@@ -73,8 +74,9 @@ def test_idempotency_conflict_on_changed_payload():
 
 def test_breaker_opens_fails_fast_and_recovers():
     clock = FakeClock()
-    b = CircuitBreaker(failure_threshold=2, reset_after=10,
-                       clock=clock)
+    b = CircuitBreaker(
+        failure_threshold=2, reset_after=10, clock=clock
+    )
     for _ in range(2):
         with pytest.raises(ZeroDivisionError):
             b.call(lambda: 1 / 0)
@@ -89,8 +91,9 @@ def test_breaker_opens_fails_fast_and_recovers():
 
 def test_failed_probe_reopens_breaker():
     clock = FakeClock()
-    b = CircuitBreaker(failure_threshold=1, reset_after=5,
-                       clock=clock)
+    b = CircuitBreaker(
+        failure_threshold=1, reset_after=5, clock=clock
+    )
     with pytest.raises(ZeroDivisionError):
         b.call(lambda: 1 / 0)
     clock.advance(5)

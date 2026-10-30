@@ -37,12 +37,14 @@ class Span:
 
     @property
     def ms(self) -> float:
-        return round(((self.end or self.start) - self.start)
-                     * 1000, 2)
+        return round(
+            ((self.end or self.start) - self.start) * 1000, 2
+        )
 
 
-_current: ContextVar[Span | None] = ContextVar("span",
-                                               default=None)
+_current: ContextVar[Span | None] = ContextVar(
+    "span", default=None
+)
 
 
 class Tracer:
@@ -54,7 +56,8 @@ class Tracer:
     def span(self, name: str, **attrs: Any) -> Iterator[Span]:
         parent = _current.get()
         s = Span(
-            trace_id=parent.trace_id if parent
+            trace_id=parent.trace_id
+            if parent
             else uuid.uuid4().hex,
             span_id=uuid.uuid4().hex[:16],
             parent_id=parent.span_id if parent else None,
@@ -77,8 +80,9 @@ class Tracer:
     def export_jsonl(self, path: str) -> None:
         with open(path, "w") as fh:
             for s in self.spans:
-                fh.write(json.dumps(asdict(s) | {"ms": s.ms})
-                         + "\n")
+                fh.write(
+                    json.dumps(asdict(s) | {"ms": s.ms}) + "\n"
+                )
 
     def tree(self, trace_id: str) -> list[str]:
         spans = [s for s in self.spans if s.trace_id == trace_id]
@@ -89,9 +93,11 @@ class Tracer:
 
         def walk(pid: str | None, depth: int) -> None:
             for s in kids[pid]:
-                lines.append("  " * depth + f"{s.name} "
-                             f"[{s.status}]")
+                lines.append(
+                    "  " * depth + f"{s.name} [{s.status}]"
+                )
                 walk(s.span_id, depth + 1)
+
         walk(None, 0)
         return lines
 
@@ -118,33 +124,43 @@ class Metrics:
 class TracedLLM:
     """Wrap any LLM so every call emits a span and metrics."""
 
-    def __init__(self, inner: LLM, tracer: Tracer,
-                 metrics: Metrics, prompt_version: str,
-                 pricing: Pricing | None = None) -> None:
+    def __init__(
+        self,
+        inner: LLM,
+        tracer: Tracer,
+        metrics: Metrics,
+        prompt_version: str,
+        pricing: Pricing | None = None,
+    ) -> None:
         self.inner = inner
         self.tracer = tracer
         self.metrics = metrics
         self.prompt_version = prompt_version
         self.pricing = pricing or Pricing()
 
-    def complete(self, messages: Sequence[Message],
-                 tools: Sequence[dict] | None = None
-                 ) -> LLMResponse:
+    def complete(
+        self,
+        messages: Sequence[Message],
+        tools: Sequence[dict] | None = None,
+    ) -> LLMResponse:
         with self.tracer.span(
-                "llm.complete",
-                prompt_version=self.prompt_version) as s:
+            "llm.complete", prompt_version=self.prompt_version
+        ) as s:
             try:
                 r = self.inner.complete(messages, tools)
             except Exception:
                 self.metrics.inc("llm.errors")
                 raise
-            cost = self.pricing.cost(r.usage.input_tokens,
-                                     r.usage.output_tokens)
-            s.attrs.update(model=r.model,
-                           tokens_in=r.usage.input_tokens,
-                           tokens_out=r.usage.output_tokens,
-                           cost_usd=round(cost, 6),
-                           tool_calls=len(r.tool_calls))
+            cost = self.pricing.cost(
+                r.usage.input_tokens, r.usage.output_tokens
+            )
+            s.attrs.update(
+                model=r.model,
+                tokens_in=r.usage.input_tokens,
+                tokens_out=r.usage.output_tokens,
+                cost_usd=round(cost, 6),
+                tool_calls=len(r.tool_calls),
+            )
         self.metrics.inc("llm.calls")
         self.metrics.inc("llm.cost_usd", cost)
         self.metrics.observe("llm.latency_ms", s.ms)

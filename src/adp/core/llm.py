@@ -112,7 +112,9 @@ class FakeLLM:
 
 def say(text: str, tokens_in: int = 50, tokens_out: int = 20):
     """Build a plain text response (test helper)."""
-    return LLMResponse(text=text, usage=Usage(tokens_in, tokens_out))
+    return LLMResponse(
+        text=text, usage=Usage(tokens_in, tokens_out)
+    )
 
 
 def call(

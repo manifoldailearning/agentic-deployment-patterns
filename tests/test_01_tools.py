@@ -5,7 +5,9 @@ from adp.core import ToolCall
 
 def test_valid_call_runs_tool():
     reg = build_registry()
-    r = reg.call(ToolCall("lookup_order", {"order_id": "ORD-100001"}))
+    r = reg.call(
+        ToolCall("lookup_order", {"order_id": "ORD-100001"})
+    )
     assert r.ok and r.output["status"] == "shipped"
 
 
@@ -24,8 +26,12 @@ def test_unknown_tool_lists_known_tools():
 
 def test_tool_exception_is_returned_not_raised():
     reg = build_registry()
-    r = reg.call(ToolCall("lookup_order", {"order_id": "ORD-999999"}))
-    assert not r.ok and r.error.startswith("tool failed: KeyError")
+    r = reg.call(
+        ToolCall("lookup_order", {"order_id": "ORD-999999"})
+    )
+    assert not r.ok and r.error.startswith(
+        "tool failed: KeyError"
+    )
 
 
 def test_schema_and_side_effects_are_declared():

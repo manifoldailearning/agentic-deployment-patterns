@@ -7,15 +7,18 @@ LOOK = ToolCall("lookup_order", {"order_id": "ORD-100001"})
 
 
 def gw(clock=None, **pol):
-    return ToolGateway(build_registry(), {
-        "a": AgentPolicy(frozenset({"lookup_order"}), **pol)},
-        clock=clock or FakeClock())
+    return ToolGateway(
+        build_registry(),
+        {"a": AgentPolicy(frozenset({"lookup_order"}), **pol)},
+        clock=clock or FakeClock(),
+    )
 
 
 def test_allowlist_and_schema_filtering():
     g = gw()
     assert [s["name"] for s in g.schemas_for("a")] == [
-        "lookup_order"]
+        "lookup_order"
+    ]
     r = g.call("a", ToolCall("issue_refund", {}))
     assert not r.ok and "not allowed" in r.error
     assert g.audit[-1].decision == "denied"
@@ -47,9 +50,13 @@ def test_secrets_never_reach_audit_log():
     s = redact_secrets('{"api_key": "sk-1", "password": "p@ss"}')
     assert "sk-1" not in s and "p@ss" not in s
     g = gw()
-    g.call("a", ToolCall("lookup_order",
-                         {"order_id": "ORD-100001",
-                          "token": "abc123"}))
+    g.call(
+        "a",
+        ToolCall(
+            "lookup_order",
+            {"order_id": "ORD-100001", "token": "abc123"},
+        ),
+    )
     assert "abc123" not in g.audit[-1].args
 
 

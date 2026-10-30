@@ -11,8 +11,9 @@ async def agent_run(payload):
 
 
 async def main():
-    q = JobQueue(agent_run, workers=2, max_queue=3,
-                 job_timeout=0.2)
+    q = JobQueue(
+        agent_run, workers=2, max_queue=3, job_timeout=0.2
+    )
     accepted, refused = [], 0
     for i in range(6):  # burst of 6 against capacity 3
         try:
