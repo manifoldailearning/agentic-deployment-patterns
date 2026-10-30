@@ -1,0 +1,17 @@
+services:
+  agent:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ADP_SYSTEM: support_system:build_system
+      ADP_PROMPT_VERSION: support-v1
+      ADP_MODEL: fake-1
+      ADP_REQUEST_TIMEOUT: "10"
+      ADP_WORKERS: "4"
+      ADP_MAX_QUEUE: "100"
+      ADP_JOB_TIMEOUT: "60"
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
